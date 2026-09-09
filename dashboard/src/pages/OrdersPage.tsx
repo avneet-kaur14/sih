@@ -5,29 +5,41 @@ import { JobDetailsModal } from '../components/JobDetailsModal';
 import { Search, CalendarCheck } from 'lucide-react';
 import { JobItem } from '../types';
 
-export const OrdersPage: React.FC = () => {
+interface OrdersPageProps {
+  jobsList?: JobItem[];
+  onUpdateJob?: (updatedJob: JobItem) => void;
+}
+
+export const OrdersPage: React.FC<OrdersPageProps> = ({
+  jobsList = MOCK_JOBS,
+  onUpdateJob,
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'scheduled' | 'completed'>('all');
-  const [bookings, setBookings] = useState<JobItem[]>(MOCK_JOBS);
+  const [bookings, setBookings] = useState<JobItem[]>(jobsList);
   const [selectedJob, setSelectedJob] = useState<JobItem | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    setBookings(jobsList);
+  }, [jobsList]);
+
   const handleAccept = (_e: React.MouseEvent, job: JobItem) => {
+    const updated = { ...job, status: 'accepted' as const };
     setBookings((prev) =>
-      prev.map((item) =>
-        item.id === job.id ? { ...item, status: 'accepted' as const } : item
-      )
+      prev.map((item) => (item.id === job.id ? updated : item))
     );
+    if (onUpdateJob) onUpdateJob(updated);
     setNotification(`Accepted booking #${job.id} for ${job.serviceName}`);
     setTimeout(() => setNotification(null), 3000);
   };
 
   const handleDecline = (_e: React.MouseEvent, job: JobItem) => {
+    const updated = { ...job, status: 'declined' as const };
     setBookings((prev) =>
-      prev.map((item) =>
-        item.id === job.id ? { ...item, status: 'declined' as const } : item
-      )
+      prev.map((item) => (item.id === job.id ? updated : item))
     );
+    if (onUpdateJob) onUpdateJob(updated);
     setNotification(`Declined booking #${job.id} for ${job.serviceName}`);
     setTimeout(() => setNotification(null), 3000);
   };
@@ -41,6 +53,7 @@ export const OrdersPage: React.FC = () => {
       prev.map((item) => (item.id === updatedJob.id ? updatedJob : item))
     );
     setSelectedJob(updatedJob);
+    if (onUpdateJob) onUpdateJob(updatedJob);
   };
 
   const filteredJobs = bookings.filter((job: JobItem) => {

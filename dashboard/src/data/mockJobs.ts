@@ -14,7 +14,8 @@ export const MOCK_JOBS: JobItem[] = [
     date: 'today',
     status: 'accepted',
     price: '₹450',
-    duration: '1 hr',
+    duration: '2 hrs',
+    estimatedDuration: 120, // 2 hours in minutes
     description: 'The switchboard in the master bedroom has a faulty socket. The socket sparks sometimes when the laptop charger or iron is plugged in. Please inspect the internal wiring and replace the 16A modular switch and socket if required.',
     customerPhotos: [
       'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80', // switchboard / wiring
@@ -40,7 +41,8 @@ export const MOCK_JOBS: JobItem[] = [
     date: 'today',
     status: 'accepted',
     price: '₹600',
-    duration: '1 hr',
+    duration: '1 hr 30 mins',
+    estimatedDuration: 90, // 1 hour 30 mins in minutes
     description: 'The kitchen sink mixer tap has been continuously leaking from the base connector for the past 2 days. The angle valve underneath is also stiff and leaking small drops. Please check the tap connection and replace the damaged rubber gasket or washer.',
     customerPhotos: [
       'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80', // sink tap
@@ -66,7 +68,8 @@ export const MOCK_JOBS: JobItem[] = [
     date: 'today',
     status: 'accepted',
     price: '₹850',
-    duration: '1 hr',
+    duration: '2 hrs 30 mins',
+    estimatedDuration: 150, // 2 hours 30 mins in minutes
     description: '1.5 Ton Split AC is blowing normal room temperature air and not cooling the bedroom. The indoor unit is also making a slight vibration sound and water is dripping from the side drain panel. Thorough filter cleaning and gas pressure check needed.',
     customerPhotos: [
       'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=600&q=80', // AC unit
@@ -92,7 +95,8 @@ export const MOCK_JOBS: JobItem[] = [
     date: 'today',
     status: 'accepted',
     price: '₹1,200',
-    duration: '1.5 hrs',
+    duration: '3 hrs',
+    estimatedDuration: 180, // 3 hours in minutes
     description: 'Deep cleaning required for kitchen and 2 bathrooms before family gathering. Major focus on grease stain removal on tile backsplash, kitchen chimney filter degreasing, and removing hard water scale from bathroom glass partitions.',
     customerPhotos: [
       'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=600&q=80', // kitchen area
@@ -118,7 +122,8 @@ export const MOCK_JOBS: JobItem[] = [
     date: 'today',
     status: 'accepted',
     price: '₹550',
-    duration: '1 hr',
+    duration: '4 hrs',
+    estimatedDuration: 240, // 4 hours in minutes
     description: 'The master bedroom wardrobe sliding door came off its bottom track and is jammed. Also two hydraulic soft-close cabinet hinges in the modular kitchen have come loose from the particle board screw holes and need tightening with new anchors.',
     customerPhotos: [
       'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=600&q=80', // wooden furniture
@@ -145,6 +150,7 @@ export const MOCK_JOBS: JobItem[] = [
     status: 'accepted',
     price: '₹300',
     duration: '1 hr',
+    estimatedDuration: 60, // 1 hour in minutes
     description: 'Kent RO water purifier has very low flow rate from the dispensing tap and the booster pump makes a continuous buzzing vibration sound without filling the tank properly. Pre-filter cartridge and sediment filter likely need replacement.',
     customerPhotos: [
       'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=600&q=80', // water purifier

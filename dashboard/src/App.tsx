@@ -30,7 +30,7 @@ export const App: React.FC = () => {
           />
         );
       case 'orders':
-        return <OrdersPage />;
+        return <OrdersPage jobsList={jobsList} onUpdateJob={handleUpdateJob} />;
       case 'voice':
         return <VoicePage />;
       case 'account':

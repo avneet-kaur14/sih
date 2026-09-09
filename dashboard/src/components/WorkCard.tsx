@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, MapPin, User, Check, X, ArrowRight, ChevronRight, CheckSquare, Square, Navigation } from 'lucide-react';
+import { Clock, MapPin, User, Check, X, ArrowRight, ChevronRight, Square, Navigation } from 'lucide-react';
 import { JobItem } from '../types';
 
 interface WorkCardProps {
@@ -27,6 +27,7 @@ export const WorkCard: React.FC<WorkCardProps> = ({
 }) => {
   const isCompleted = job.status === 'completed';
   const isReached = !!job.isLocationReached;
+  const isInProgress = !!job.workStarted && !isCompleted;
 
   return (
     <div
@@ -34,6 +35,8 @@ export const WorkCard: React.FC<WorkCardProps> = ({
       className={`bg-white rounded-2xl p-3.5 sm:p-4 shadow-xs border transition-all duration-200 flex flex-col gap-3 group cursor-pointer active:scale-[0.99] relative ${
         isCompleted
           ? 'border-emerald-200/80 bg-emerald-50/15'
+          : isInProgress
+          ? 'border-neutral-900/40 bg-neutral-900/[0.02] shadow-xs'
           : 'border-neutral-100 hover:border-brand-primary/40 hover:shadow-md'
       }`}
     >
@@ -95,6 +98,11 @@ export const WorkCard: React.FC<WorkCardProps> = ({
             <div className="flex items-center gap-1.5 font-medium text-neutral-700 flex-shrink-0 mt-0.5 sm:mt-0">
               <Clock className="w-3.5 h-3.5 text-brand-primary flex-shrink-0" />
               <span>{job.scheduledTime}</span>
+              {job.estimatedDuration && (
+                <span className="text-[10px] text-neutral-500 font-semibold ml-1">
+                  ({Math.floor(job.estimatedDuration / 60)}h {job.estimatedDuration % 60 ? `${job.estimatedDuration % 60}m` : ''})
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -110,18 +118,19 @@ export const WorkCard: React.FC<WorkCardProps> = ({
       {/* Action Buttons Row on Home Page: Reached & Completed in a clean 2-column grid */}
       {showCompleteCheckbox && (
         <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-2.5 border-t border-neutral-100">
-          {/* Reached Location Button */}
+          {/* Reached Location Button (Flow 1) */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onToggleReached?.(e, job);
             }}
-            aria-label={isReached ? `Mark location as not reached for ${job.serviceName}` : `Mark location as reached for ${job.serviceName}`}
-            className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150 cursor-pointer active:scale-95 shadow-2xs border-2 ${
+            disabled={isReached}
+            aria-label={isReached ? `Location reached for ${job.serviceName}` : `Mark location as reached for ${job.serviceName}`}
+            className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150 shadow-2xs border-2 ${
               isReached
-                ? 'bg-[#01471f] text-white border-[#01471f] hover:bg-[#013819]'
-                : 'bg-white hover:bg-[#1C516C]/5 text-[#1C516C] border-[#1C516C]'
+                ? 'bg-[#01471f] text-white border-[#01471f] cursor-default'
+                : 'bg-white hover:bg-[#1C516C]/5 text-[#1C516C] border-[#1C516C] cursor-pointer active:scale-95'
             }`}
           >
             {isReached ? (
@@ -132,22 +141,27 @@ export const WorkCard: React.FC<WorkCardProps> = ({
             <span>Reached</span>
           </button>
 
-          {/* Completed button with green border */}
+          {/* Completed Button (Flow 2) */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onToggleCompleted?.(e, job);
+              if (!isCompleted) {
+                onToggleCompleted?.(e, job);
+              }
             }}
-            aria-label={isCompleted ? `Mark ${job.serviceName} as pending` : `Mark ${job.serviceName} as completed`}
-            className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150 cursor-pointer active:scale-95 shadow-2xs border-2 ${
+            disabled={isCompleted}
+            aria-label={isCompleted ? `${job.serviceName} is completed` : `Mark ${job.serviceName} as completed`}
+            className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150 shadow-2xs border-2 ${
               isCompleted
-                ? 'bg-[#01471f] text-white border-[#01471f] hover:bg-[#013819]'
-                : 'bg-white hover:bg-emerald-50/50 text-[#01471f] border-[#01471f]'
+                ? 'bg-[#01471f] text-white border-[#01471f] cursor-default opacity-100'
+                : isInProgress
+                ? 'bg-emerald-50 hover:bg-emerald-100/70 text-[#01471f] border-[#01471f] cursor-pointer active:scale-95'
+                : 'bg-white hover:bg-emerald-50/50 text-[#01471f] border-[#01471f] cursor-pointer active:scale-95'
             }`}
           >
             {isCompleted ? (
-              <CheckSquare className="w-4 h-4 text-white stroke-[2.5]" />
+              <Check className="w-4 h-4 stroke-[2.5]" />
             ) : (
               <Square className="w-4 h-4 text-[#01471f] stroke-[2.2]" />
             )}

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Phone,
@@ -13,6 +14,10 @@ import {
   Send,
 } from 'lucide-react';
 import { JobItem } from '../types';
+import { OtpVerificationModal } from './OtpVerificationModal';
+import { CompleteWorkModal } from './CompleteWorkModal';
+import { BeforeWorkModal } from './BeforeWorkModal';
+import { WorkSessionModal } from './WorkSessionModal';
 
 interface JobDetailsModalProps {
   job: JobItem;
@@ -26,6 +31,22 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   onUpdateJob,
 }) => {
   const [isReached, setIsReached] = useState<boolean>(!!job.isLocationReached);
+  const [showOtpModal, setShowOtpModal] = useState<boolean>(false);
+  const [showBeforeWorkModal, setShowBeforeWorkModal] = useState<boolean>(false);
+  const [showWorkSessionModal, setShowWorkSessionModal] = useState<boolean>(false);
+  const [showCompleteModal, setShowCompleteModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsReached(!!job.isLocationReached);
+  }, [job.isLocationReached]);
+
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [showAllPhotosModal, setShowAllPhotosModal] = useState<boolean>(false);
   const [showCallModal, setShowCallModal] = useState<boolean>(false);
@@ -35,12 +56,60 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   ]);
   const [inputMessage, setInputMessage] = useState('');
 
-  const handleToggleReached = () => {
-    const nextState = !isReached;
-    setIsReached(nextState);
+  const handleOtpSuccess = () => {
+    setIsReached(true);
+    setShowOtpModal(false);
+    const updated = { ...job, isLocationReached: true, locationVerified: true };
     if (onUpdateJob) {
-      onUpdateJob({ ...job, isLocationReached: nextState });
+      onUpdateJob(updated);
     }
+    // Proceed directly to before-work photo step
+    setShowBeforeWorkModal(true);
+  };
+
+  const handleStartWork = (beforeWorkPhoto: string) => {
+    const now = Date.now();
+    const updated: JobItem = {
+      ...job,
+      beforeWorkPhoto,
+      workStarted: true,
+      workStartTime: now,
+      status: 'in_progress',
+    };
+    if (onUpdateJob) {
+      onUpdateJob(updated);
+    }
+    setShowBeforeWorkModal(false);
+    setShowWorkSessionModal(true);
+  };
+
+  const handleCompleteConfirm = (proofPhoto: string) => {
+    const completionTime = Date.now();
+    const startMs = job.workStartTime || (completionTime - (job.estimatedDuration || 120) * 60 * 1000);
+    const totalMinutes = Math.max(1, Math.round((completionTime - startMs) / (1000 * 60)));
+    const hrs = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    const actualDurationText = hrs > 0 && mins > 0
+      ? `${hrs} hour${hrs > 1 ? 's' : ''} ${mins} minute${mins > 1 ? 's' : ''}`
+      : hrs > 0
+      ? `${hrs} hour${hrs > 1 ? 's' : ''}`
+      : `${mins} minute${mins > 1 ? 's' : ''}`;
+
+    const nowFormatted = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const updated: JobItem = {
+      ...job,
+      status: 'completed',
+      completionProofPhoto: proofPhoto,
+      completedAt: nowFormatted,
+      completionTime,
+      actualWorkDuration: actualDurationText,
+      workCompleted: true,
+    };
+    if (onUpdateJob) {
+      onUpdateJob(updated);
+    }
+    setShowCompleteModal(false);
+    setShowWorkSessionModal(false);
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -62,14 +131,16 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
 
   const photos = job.customerPhotos && job.customerPhotos.length > 0 ? job.customerPhotos : [job.serviceImage || job.image];
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+      className="fixed inset-0 z-[9000] bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto select-none transition-all duration-200"
       onClick={onClose}
     >
       {/* Modal Dialog Card */}
       <div
-        className="bg-white rounded-3xl max-w-lg md:max-w-2xl w-full max-h-[92vh] sm:max-h-[88vh] flex flex-col shadow-2xl border border-neutral-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200 relative my-auto"
+        className="bg-white rounded-3xl max-w-lg md:max-w-2xl w-full max-h-[92vh] sm:max-h-[88vh] flex flex-col shadow-2xl border border-neutral-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200 relative my-auto select-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header: Client Information + Clear Close X */}
@@ -231,49 +302,207 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             </div>
           </section>
 
-          {/* Action Buttons: Mark as Completed & Reached Location */}
-          <div className="pt-2 pb-2 space-y-2.5">
-            {/* Mark as Completed Toggle Button */}
-            <button
-              type="button"
-              onClick={() => {
-                const nextStatus = job.status === 'completed' ? 'accepted' : 'completed';
-                if (onUpdateJob) {
-                  onUpdateJob({ ...job, status: nextStatus as 'accepted' | 'completed' });
-                }
-              }}
-              className={`w-full h-12 rounded-2xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99] border-2 ${
-                job.status === 'completed'
-                  ? 'bg-[#01471f] text-white border-[#01471f] shadow-emerald-900/10'
-                  : 'bg-white hover:bg-emerald-50/50 text-[#01471f] border-[#01471f] shadow-2xs'
-              }`}
-            >
-              <Check className={`w-4 h-4 stroke-[3] ${job.status === 'completed' ? 'text-white' : 'text-[#01471f]'}`} />
-              <span>{job.status === 'completed' ? 'Task Marked as Completed' : 'Mark Task as Completed'}</span>
-            </button>
+          {/* In-Progress Work Session Callout Banner */}
+          {job.workStarted && job.status !== 'completed' && (
+            <div className="bg-neutral-900 text-white rounded-2xl p-4 shadow-md flex items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Work In Progress</span>
+                </div>
+                <p className="text-xs text-neutral-300">Live countdown timer &amp; SOS active</p>
+              </div>
 
-            {/* 5. Reached the Location Button (Color: #1C516C / Green for reached) */}
-            <button
-              type="button"
-              onClick={handleToggleReached}
-              className={`w-full h-13 sm:h-14 rounded-2xl font-bold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99] ${
-                isReached
-                  ? 'bg-[#01471f] text-white border-2 border-[#01471f] shadow-emerald-900/10'
-                  : 'bg-white text-[#1C516C] border-2 border-[#1C516C] hover:bg-[#1C516C]/5 shadow-neutral-200/50'
-              }`}
-            >
-              {isReached ? (
-                <>
-                  <Check className="w-5 h-5 stroke-[2.5]" />
-                  <span>Location Reached</span>
-                </>
-              ) : (
+              <button
+                type="button"
+                onClick={() => setShowWorkSessionModal(true)}
+                className="px-3.5 py-2 bg-white hover:bg-neutral-100 text-neutral-900 text-xs font-bold rounded-xl shadow-xs transition cursor-pointer active:scale-95"
+              >
+                View Session
+              </button>
+            </div>
+          )}
+
+          {/* Completed Work Summary Card */}
+          {job.status === 'completed' && (
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-emerald-900">Work Summary</span>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-600 text-white">
+                  ✓ Completed
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs text-neutral-700 pt-1 border-t border-emerald-200/60">
+                <div>
+                  <span className="text-[11px] text-neutral-500 block font-medium">Work Started</span>
+                  <span className="font-bold text-neutral-900">
+                    {job.workStartTime ? new Date(job.workStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:30 AM'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-neutral-500 block font-medium">Work Completed</span>
+                  <span className="font-bold text-neutral-900">{job.completedAt || 'Completed'}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-neutral-500 block font-medium">Actual Work Duration</span>
+                  <span className="font-mono font-bold text-emerald-800 text-sm">{job.actualWorkDuration || '00:00:00'}</span>
+                </div>
+                {job.estimatedDuration && (
+                  <div>
+                    <span className="text-[11px] text-neutral-500 block font-medium">Estimated Time</span>
+                    <span className="font-medium text-neutral-600">
+                      {Math.floor(job.estimatedDuration / 60)}h {job.estimatedDuration % 60 ? `${job.estimatedDuration % 60}m` : ''}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Before-Work & After-Work Proof Photos */}
+          {(job.beforeWorkPhoto || job.completionProofPhoto) && (
+            <section className="space-y-3">
+              <h4 className="text-sm sm:text-base font-bold text-[#222222]">
+                Service Photos &amp; Verification Proof
+              </h4>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Before-Work Photo */}
+                {job.beforeWorkPhoto && (
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-bold text-neutral-600 block">
+                      Before-Work Photo
+                    </span>
+                    <div className="rounded-xl overflow-hidden border border-neutral-200 bg-neutral-900 h-32 flex items-center justify-center shadow-2xs">
+                      <img
+                        src={job.beforeWorkPhoto}
+                        alt="Before-work proof"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* After-Work Photo */}
+                {job.completionProofPhoto && (
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-bold text-emerald-800 block">
+                      After-Work Proof
+                    </span>
+                    <div className="rounded-xl overflow-hidden border border-emerald-300 bg-neutral-900 h-32 flex items-center justify-center shadow-2xs">
+                      <img
+                        src={job.completionProofPhoto}
+                        alt="After-work proof"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Action Buttons */}
+          <div className="pt-2 pb-2 space-y-2.5">
+            {/* When Completed */}
+            {job.status === 'completed' && (
+              <button
+                type="button"
+                disabled={true}
+                className="w-full h-12 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 bg-[#01471f] text-white border-2 border-[#01471f] shadow-emerald-900/10 cursor-default opacity-100"
+              >
+                <Check className="w-4 h-4 stroke-[3] text-white" />
+                <span>Task Completed</span>
+              </button>
+            )}
+
+            {/* When In Progress */}
+            {job.workStarted && job.status !== 'completed' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowWorkSessionModal(true)}
+                  className="w-full h-13 sm:h-14 rounded-2xl font-extrabold text-sm sm:text-base transition-all duration-150 shadow-md bg-neutral-900 hover:bg-black text-white flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                >
+                  <Clock className="w-5 h-5 text-brand-primary" />
+                  <span>Open Work Session (Timer &amp; SOS)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCompleteModal(true)}
+                  className="w-full h-12 rounded-2xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-xs border-2 bg-white hover:bg-emerald-50 text-[#01471f] border-[#01471f] cursor-pointer active:scale-[0.99]"
+                >
+                  <Check className="w-4 h-4 stroke-[3] text-[#01471f]" />
+                  <span>Complete Work</span>
+                </button>
+              </>
+            )}
+
+            {/* When Reached but not started */}
+            {isReached && !job.workStarted && job.status !== 'completed' && (
+              <button
+                type="button"
+                onClick={() => setShowBeforeWorkModal(true)}
+                className="w-full h-13 sm:h-14 rounded-2xl font-extrabold text-sm sm:text-base transition-all duration-150 shadow-md bg-[#1C516C] hover:bg-[#164055] text-white flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+              >
+                <span>Upload Before-Work Photo &amp; Start Work</span>
+              </button>
+            )}
+
+            {/* When Not Reached yet */}
+            {!isReached && job.status !== 'completed' && (
+              <button
+                type="button"
+                onClick={() => setShowOtpModal(true)}
+                className="w-full h-13 sm:h-14 rounded-2xl font-bold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-xs bg-white text-[#1C516C] border-2 border-[#1C516C] hover:bg-[#1C516C]/5 cursor-pointer active:scale-[0.99]"
+              >
                 <span>Reached the Location</span>
-              )}
-            </button>
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* OTP Verification Modal on top of JobDetailsModal (4-digit, mock: 1234) */}
+      <OtpVerificationModal
+        isOpen={showOtpModal}
+        onClose={() => setShowOtpModal(false)}
+        onVerifySuccess={handleOtpSuccess}
+        mockOtp="1234"
+        serviceName={job.serviceName}
+        clientName={job.clientName}
+      />
+
+      {/* Before Work Modal on top of JobDetailsModal */}
+      <BeforeWorkModal
+        isOpen={showBeforeWorkModal}
+        job={job}
+        onClose={() => setShowBeforeWorkModal(false)}
+        onStartWork={handleStartWork}
+      />
+
+      {/* Work Session Modal (Timer + SOS) */}
+      <WorkSessionModal
+        isOpen={showWorkSessionModal}
+        job={job}
+        onClose={() => setShowWorkSessionModal(false)}
+        onCompleteClick={() => {
+          setShowWorkSessionModal(false);
+          setShowCompleteModal(true);
+        }}
+      />
+
+      {/* Complete Work Modal (Proof Photo + 6-digit Customer OTP 123456) */}
+      <CompleteWorkModal
+        isOpen={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        onConfirm={handleCompleteConfirm}
+        mockOtp="123456"
+        serviceName={job.serviceName}
+        clientName={job.clientName}
+      />
 
       {/* Single Photo Lightbox Modal */}
       {selectedPhotoIndex !== null && (
@@ -488,5 +717,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       )}
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 

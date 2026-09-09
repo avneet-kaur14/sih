@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Phone,
@@ -14,6 +14,7 @@ import {
   Send,
 } from 'lucide-react';
 import { JobItem } from '../types';
+import { OtpVerificationModal } from '../components/OtpVerificationModal';
 
 interface JobDetailPageProps {
   job: JobItem;
@@ -27,6 +28,12 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({
   onUpdateJob,
 }) => {
   const [isReached, setIsReached] = useState<boolean>(!!job.isLocationReached);
+  const [showOtpModal, setShowOtpModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsReached(!!job.isLocationReached);
+  }, [job.isLocationReached]);
+
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [showAllPhotosModal, setShowAllPhotosModal] = useState<boolean>(false);
   const [showCallModal, setShowCallModal] = useState<boolean>(false);
@@ -36,11 +43,11 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({
   ]);
   const [inputMessage, setInputMessage] = useState('');
 
-  const handleToggleReached = () => {
-    const nextState = !isReached;
-    setIsReached(nextState);
+  const handleOtpSuccess = () => {
+    setIsReached(true);
+    setShowOtpModal(false);
     if (onUpdateJob) {
-      onUpdateJob({ ...job, isLocationReached: nextState });
+      onUpdateJob({ ...job, isLocationReached: true });
     }
   };
 
@@ -252,17 +259,22 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({
         <div className="pt-4">
           <button
             type="button"
-            onClick={handleToggleReached}
-            className={`w-full h-13 sm:h-14 rounded-2xl font-bold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99] ${
+            onClick={() => {
+              if (!isReached) {
+                setShowOtpModal(true);
+              }
+            }}
+            disabled={isReached}
+            className={`w-full h-13 sm:h-14 rounded-2xl font-bold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-xs ${
               isReached
-                ? 'bg-[#01471f] text-white border-2 border-[#01471f] shadow-emerald-900/10'
-                : 'bg-white text-[#A66666] border-2 border-[#A66666] hover:bg-brand-light/40 hover:border-[#8E5252]'
+                ? 'bg-[#01471f] text-white border-2 border-[#01471f] shadow-emerald-900/10 cursor-default'
+                : 'bg-white text-[#1C516C] border-2 border-[#1C516C] hover:bg-[#1C516C]/5 shadow-neutral-200/50 cursor-pointer active:scale-[0.99]'
             }`}
           >
             {isReached ? (
               <>
                 <Check className="w-5 h-5 stroke-[2.5]" />
-                <span>✓ Location Reached</span>
+                <span>Location Reached</span>
               </>
             ) : (
               <span>Reached the Location</span>
@@ -270,6 +282,13 @@ export const JobDetailPage: React.FC<JobDetailPageProps> = ({
           </button>
         </div>
       </div>
+
+      {/* OTP Verification Modal on top of JobDetailPage */}
+      <OtpVerificationModal
+        isOpen={showOtpModal}
+        onClose={() => setShowOtpModal(false)}
+        onVerifySuccess={handleOtpSuccess}
+      />
 
       {/* Lightbox Modal for Single Photo Enlargement */}
       {selectedPhotoIndex !== null && (
